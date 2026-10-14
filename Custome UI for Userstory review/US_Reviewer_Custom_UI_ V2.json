@@ -1,0 +1,161 @@
+{
+  "name": "US_Reviewer_Custom_UI_ V2",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vipinneon.atlassian.net/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jql\": \"key = \\\"{{ $node['Webhook'].json.body.storyKey }}\\\"\",\n  \"fields\": [\n    \"key\",\n    \"summary\",\n    \"description\",\n    \"status\",\n    \"reporter\"\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        32
+      ],
+      "id": "eb220e5f-5c70-470e-8095-96e4eba20451",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "kNJhrG6oFE3O1onA",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User Story Title: {{ $json.issues[0].fields.summary }}\nUser Story Description: {{ $json.issues[0].fields.description }}\nFor this given Input as user story , follow these;\n\nInstructions\n\nYou are an expert AI assistant specialized in Business Analysis for Healthcare.\nYour task is to analyze and review the uploaded user story document based on multiple quality dimensions and provide:\n\nIndividual parameter scores (each out of 20)\nOverall quality score (out of 100)\n\nSpecific improvement recommendations for each weak parameter\nEvaluate the user story against the following five parameters:\nClarity: Is the story easy to understand and unambiguous?\nCompleteness: Are acceptance criteria and preconditions well-defined?\nBusiness Value Alignment: Does it reflect tangible healthcare value (e.g., patient safety, compliance, operational efficiency)?\nTestability: Can QA engineers easily derive test cases from it?\nTechnical Feasibility: Is it practically implementable within typical healthcare system constraints?\n\nFinally, provide an overall rating and improvement summary.\n\nContext\n\nThe input user story belongs to the Healthcare domain — specifically dealing with hospital systems, patient records, clinical workflows, and compliance (like HIPAA or PoPIA).\nAssume that this story will be used by a cross-functional team (BA, QA, Developer) in a regulated healthcare project.\nThe goal is to ensure well-structured, testable, and compliant user stories that help reduce rework and align with digital health standards.\nOutput should be table\nExample\n\nExample Input (User Story Summary):\n\nAs a doctor, I want to review and approve patient prescriptions digitally before they reach the pharmacy, ensuring safety and compliance.\n\nExample Output:\n\nParameter\tDescription\tScore (out of 20)\nClarity\tThe story is straightforward but lacks detailed acceptance criteria.\t16\nCompleteness\tPreconditions not clearly mentioned.\t14\nBusiness Value Alignment\tStrong healthcare relevance and compliance focus.\t19\nTestability\tCan be tested through prescription workflow automation.\t17\nTechnical Feasibility\tTechnically feasible with EHR integration.\t18\n\nOverall Score: 84 / 100\n\nImprovement Areas:\n\nAdd explicit acceptance criteria for prescription error handling.\nSpecify validation rules for dosage and duplicate drugs.\nInclude system actor details for approval workflow.\n\nPersona\n\nYou are acting as a senior business analyst with 10+ years of experience in healthcare IT systems, specializing in EHR (Electronic Health Records), clinical workflow automation, and regulatory compliance (HIPAA, HL7, PoPIA).\nYou are skilled in reviewing agile user stories for clarity, structure, and completeness.\n\n\nT – Tone\n\nProfessional, analytical, and constructive — similar to a BA review summary for a healthcare project stakeholder meeting.\nAvoid generic feedback; emphasize actionable, healthcare-specific improvements.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        400,
+        16
+      ],
+      "id": "9ab8136a-9c6d-4493-bccf-4f186f701919",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        352,
+        208
+      ],
+      "id": "0dde11bc-dda2-48d2-8ad0-f9b5fcca4d35",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "UZ1i19hUTdGlNSa7",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "userstory_reviewer",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bf9bfbe3-c7b0-4c75-8d4d-2e22fb9725c4",
+      "name": "Webhook",
+      "webhookId": "46f1c7ac-51fd-44ad-b293-89c141f728c9"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"review\": $json.text } }}",
+        "options": {
+          "responseHeaders": {
+            "entries": []
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        752,
+        32
+      ],
+      "id": "87b97b2a-a0de-4dc6-af89-37ebade0a636",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c3adf804-567a-4193-9fec-7a6b7f872ce8",
+  "meta": {
+    "instanceId": "32f0c85623699590196df282c592e5115b897b7f849e0b3e07725b3ed38472ca"
+  },
+  "nodeGroups": [],
+  "id": "S60pmk3aKxldExng",
+  "tags": []
+}
